@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="test-deploy-ci" default="dev">
+
+    <property name="project.name" value="test-deploy-ci"/>
+    <property name="behat.basedir" value="${project.basedir}/tests/behat"/>
+
+    <taskdef name="behat" classname="build.phing.behat.tasks.BehatTask"/>
+
+    <!-- create timestamp -->
+    <tstamp>
+        <format property="build.time" pattern="%Y-%m-%d %H:%I:%S"/>
+    </tstamp>
+
+    <echo msg="PHING build on ${project.name} at ${build.time} on ${host.name}"/>
+
+    <target name="dev" description="Runs a battery of tests">
+
+        <!-- PHPUnit tests -->
+        <phpunit printsummary="true" haltonerror="true" haltonfailure="true">
+            <batchtest>
+                <fileset dir="${project.basedir}/tests/phpunit">
+                    <include name="*.php"/>
+                </fileset>
+            </batchtest>
+        </phpunit>
+
+        <!-- Behat tests -->
+        <behat featuresDir="${behat.basedir}/features" features="sample"
+               executable="/Applications/XAMPP/xamppfiles/bin/behat"/>
+
+        <echo msg="Done!"/>
+    </target>
+
+</project>
