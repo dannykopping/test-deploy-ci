@@ -8,4 +8,4 @@ Scenario Outline: Test the greeting
     Examples:
         |   name  |
         |  Danny  |
-        |  Sample |
+#        |  Sample |

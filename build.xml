@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="test-deploy-ci" default="dev">
+<project name="test-deploy-ci" default="test">
 
-    <property name="project.name" value="test-deploy-ci"/>
+    <!-- load in properties -->
+    <property file="build/build.properties"/>
+
     <property name="behat.basedir" value="${project.basedir}/tests/behat"/>
+    <property name="git.repo" value="${project.basedir}/.git"/>
 
     <taskdef name="behat" classname="build.phing.behat.tasks.BehatTask"/>
 
-    <!-- create timestamp -->
     <tstamp>
-        <format property="build.time" pattern="%Y-%m-%d %H:%I:%S"/>
+        <format property="timestamp" pattern="%Y-%m-%d-%H-%I-%S"/>
     </tstamp>
 
-    <echo msg="PHING build on ${project.name} at ${build.time} on ${host.name}"/>
+    <!-- start build -->
+    <echo msg="PHING build on ${project.name} at ${timestamp} on ${host.name}"/>
 
-    <target name="dev" description="Runs a battery of tests">
+    <target name="test" description="Runs a battery of tests">
 
         <!-- PHPUnit tests -->
         <phpunit printsummary="true" haltonerror="true" haltonfailure="true">
@@ -28,7 +31,64 @@
         <behat featuresDir="${behat.basedir}/features" features="sample"
                executable="/Applications/XAMPP/xamppfiles/bin/behat"/>
 
+        <!-- backup -->
+        <if>
+            <isset property="do.archive"/>
+            <then>
+                <phingcall target="archive"/>
+            </then>
+            <else>
+                <input message="Create archive?" propertyName="do.archive"/>
+                <phingcall target="archive"/>
+            </else>
+        </if>
+
+        <!-- tagging -->
+        <if>
+            <isset property="do.tag"/>
+            <then>
+                <phingcall target="tag"/>
+            </then>
+            <else>
+                <input message="Tag repo?" propertyName="do.tag"/>
+                <phingcall target="tag"/>
+            </else>
+        </if>
+
         <echo msg="Done!"/>
+    </target>
+
+    <target name="tag">
+        <if>
+            <equals arg1="${do.tag}" arg2="y" casesensitive="false"/>
+            <then>
+                <echo msg="Tagging repository located at ${git.repo}"/>
+
+                <!-- https://gist.github.com/2343009 -->
+                <gittag repository="${git.repo}" name="deploy-${timestamp}"
+                                force="true" message="Run unit tests"/>
+            </then>
+        </if>
+    </target>
+
+    <target name="archive">
+        <if>
+            <equals arg1="${do.archive}" arg2="y" casesensitive="false"/>
+            <then>
+                <echo msg="Creating archive"/>
+
+                <mkdir dir="${project.basedir}/archive" mode="0777"/>
+                <zip basedir="${project.basedir}" destfile="${project.basedir}/archive/${timestamp}.zip">
+                    <fileset dir="${project.basedir}">
+                        <exclude name="archive/**"/>
+                        <exclude name="build/**"/>
+                        <exclude name="tests/**"/>
+                        <exclude name=".*/**"/>
+                        <exclude name="build.xml"/>
+                    </fileset>
+                </zip>
+            </then>
+        </if>
     </target>
 
 </project>

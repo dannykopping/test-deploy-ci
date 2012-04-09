@@ -29,7 +29,7 @@
         {
             return array(
                 array("Danny"),
-                array("Something else")
+//                array("Something else")
             );
         }
     }
