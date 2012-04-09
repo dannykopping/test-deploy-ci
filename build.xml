@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="test-deploy-ci" default="test">
+<project name="test-deploy-ci" default="all">
 
     <!-- load in properties -->
     <property file="build/build.properties"/>
@@ -8,15 +8,24 @@
     <property name="git.repo" value="${project.basedir}/.git"/>
 
     <taskdef name="behat" classname="build.phing.behat.tasks.BehatTask"/>
+    <taskdef name="sftp" classname="build.phing.sftp.SftpTask"/>
 
     <tstamp>
         <format property="timestamp" pattern="%Y-%m-%d-%H-%I-%S"/>
     </tstamp>
 
+    <fileset id="build.set" dir="${project.basedir}">
+        <exclude name="archive/**"/>
+        <exclude name="build/**"/>
+        <exclude name="tests/**"/>
+        <exclude name=".*/**"/>
+        <exclude name="build.xml"/>
+    </fileset>
+
     <!-- start build -->
     <echo msg="PHING build on ${project.name} at ${timestamp} on ${host.name}"/>
 
-    <target name="test" description="Runs a battery of tests">
+    <target name="all" description="Runs a battery of tests, optionally tag the repo, archive build and deploy">
 
         <!-- PHPUnit tests -->
         <phpunit printsummary="true" haltonerror="true" haltonfailure="true">
@@ -43,6 +52,18 @@
             </else>
         </if>
 
+        <!-- deploy -->
+        <if>
+            <isset property="do.deploy"/>
+            <then>
+                <phingcall target="deploy"/>
+            </then>
+            <else>
+                <input message="Deploy build?" propertyName="do.deploy"/>
+                <phingcall target="deploy"/>
+            </else>
+        </if>
+
         <!-- tagging -->
         <if>
             <isset property="do.tag"/>
@@ -66,7 +87,7 @@
 
                 <!-- https://gist.github.com/2343009 -->
                 <gittag repository="${git.repo}" name="deploy-${timestamp}"
-                                force="true" message="Run unit tests"/>
+                        force="true" message="Run unit tests"/>
             </then>
         </if>
     </target>
@@ -79,14 +100,24 @@
 
                 <mkdir dir="${project.basedir}/archive" mode="0777"/>
                 <zip basedir="${project.basedir}" destfile="${project.basedir}/archive/${timestamp}.zip">
-                    <fileset dir="${project.basedir}">
-                        <exclude name="archive/**"/>
-                        <exclude name="build/**"/>
-                        <exclude name="tests/**"/>
-                        <exclude name=".*/**"/>
-                        <exclude name="build.xml"/>
-                    </fileset>
+                    <fileset refid="build.set"/>
                 </zip>
+            </then>
+        </if>
+    </target>
+
+    <target name="deploy">
+        <if>
+            <equals arg1="${do.deploy}" arg2="y" casesensitive="false"/>
+            <then>
+                <sftp host="dev" username="root" password="dev"
+                      todir="/var/next">
+                    <fileset refid="build.set"/>
+                </sftp>
+
+                <ssh host="dev" username="root" password="dev"
+                     command="cd /var &amp;&amp; ln -snf next www"
+                     display="true"/>
             </then>
         </if>
     </target>
